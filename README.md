@@ -5,6 +5,7 @@ Formulae for LLM Systems Manager components on macOS (Apple Silicon).
 ## Agent
 
     brew tap llmsyscore/tap
+    brew trust llmsyscore/tap   # newer Homebrew requires trusting third-party taps
     brew install llm-systems-agent
 
 Configure: set `MANAGER_URL` in `$(brew --prefix)/etc/llm-systems-agent/agent_config.yaml`, then

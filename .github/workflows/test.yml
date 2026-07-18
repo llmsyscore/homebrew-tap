@@ -28,6 +28,7 @@ jobs:
         run: |
           mkdir -p "$(brew --repository)/Library/Taps/llmsyscore"
           ln -sfn "$PWD" "$(brew --repository)/Library/Taps/llmsyscore/homebrew-tap"
+          brew trust llmsyscore/tap || true
       - name: Audit + style
         run: |
           brew style llmsyscore/tap

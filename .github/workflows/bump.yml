@@ -56,6 +56,7 @@ jobs:
         run: |
           mkdir -p "$(brew --repository)/Library/Taps/llmsyscore"
           ln -sfn "$PWD" "$(brew --repository)/Library/Taps/llmsyscore/homebrew-tap"
+          brew trust llmsyscore/tap || true
       - uses: ./.github/actions/install-test
         if: steps.v.outputs.latest != steps.v.outputs.current
         with:

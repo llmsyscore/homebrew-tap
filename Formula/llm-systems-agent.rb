@@ -5,8 +5,13 @@ class LlmSystemsAgent < Formula
   sha256 "88dfac53f3d907cc0ed902bae15e772492e59c6e0c19fdcc5bc7e418bef51767"
   license "AGPL-3.0-only"
 
-  depends_on :macos
+  livecheck do
+    url :homepage
+    strategy :github_latest
+  end
+
   depends_on arch: :arm64
+  depends_on :macos
 
   def install
     bin.install "llm-systems-agent"
@@ -41,11 +46,6 @@ class LlmSystemsAgent < Formula
     keep_alive true
     log_path var/"log/llm-systems-agent/agent.log"
     error_log_path var/"log/llm-systems-agent/agent.err.log"
-  end
-
-  livecheck do
-    url :homepage
-    strategy :github_latest
   end
 
   test do
