@@ -1,8 +1,8 @@
 class LlmSystemsAgent < Formula
   desc "Monitoring agent for LLM Systems Manager"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.6/llm-systems-agent-macos-arm64.tar.gz"
-  sha256 "88dfac53f3d907cc0ed902bae15e772492e59c6e0c19fdcc5bc7e418bef51767"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.5/llm-systems-agent-macos-arm64.tar.gz"
+  sha256 "8216d53343d6c34cde4d916ee8849768d6d787aa4b114b1ecbf20b3383d88148"
   license "AGPL-3.0-only"
 
   livecheck do
