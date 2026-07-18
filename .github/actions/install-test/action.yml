@@ -1,0 +1,37 @@
+name: Install + service smoke test
+description: Install the formula, assert version/health/identify via brew services, then uninstall clean.
+inputs:
+  formula:
+    description: Fully-qualified formula name to install (e.g. llmsyscore/tap/llm-systems-agent)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install + version
+      shell: bash
+      run: |
+        brew install --formula "${{ inputs.formula }}"
+        llm-systems-agent --version | grep -E '^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}'
+    - name: Service serves /health + /identify
+      shell: bash
+      run: |
+        brew services start llm-systems-agent
+        ok=""
+        for _ in $(seq 1 30); do
+          if curl -fsS http://127.0.0.1:8082/health 2>/dev/null | grep -q '"status":"ok"'; then ok=1; break; fi
+          sleep 2
+        done
+        if [ -z "$ok" ]; then
+          echo "agent never became healthy; service state + logs:"
+          brew services list || true
+          cat "$(brew --prefix)"/var/log/llm-systems-agent/agent*.log 2>/dev/null || true
+          exit 1
+        fi
+        curl -fsS http://127.0.0.1:8082/identify | grep -q '"capabilities"'
+    - name: Stop, brew test, uninstall clean
+      shell: bash
+      run: |
+        brew services stop llm-systems-agent
+        brew test llm-systems-agent
+        brew uninstall llm-systems-agent
+        ! command -v llm-systems-agent

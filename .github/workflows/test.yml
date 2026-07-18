@@ -1,0 +1,37 @@
+name: Formula CI
+
+# Symlinks the checkout in as the live tap so audit/install exercise THIS
+# revision, then runs the shared install-test composite action.
+
+on:
+  push:
+    branches: [main]
+    paths: ["Formula/**", ".github/**"]
+  pull_request:
+    paths: ["Formula/**", ".github/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: formula-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link checkout as the live tap
+        run: |
+          mkdir -p "$(brew --repository)/Library/Taps/llmsyscore"
+          ln -sfn "$PWD" "$(brew --repository)/Library/Taps/llmsyscore/homebrew-tap"
+      - name: Audit + style
+        run: |
+          brew style llmsyscore/tap
+          brew audit llmsyscore/tap/llm-systems-agent
+      - uses: ./.github/actions/install-test
+        with:
+          formula: llmsyscore/tap/llm-systems-agent
