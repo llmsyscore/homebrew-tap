@@ -4,7 +4,10 @@ name: Bump formulas to latest release
 # release; on drift, rewrites every url + per-asset sha256 across all
 # formulas (.github/scripts/bump-formulas.py), re-runs the full install
 # tests (macOS + Linux, agent + control plane) against the rewritten
-# formulas, and only then pushes. Broken releases never land.
+# formulas, and only then opens a bump PR. Broken releases never land.
+#
+# main's ruleset forbids direct pushes (PR + checks + signatures required),
+# so the bump lands as a PR a maintainer merges, not a push to main.
 
 on:
   schedule:
@@ -13,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: bump
@@ -83,24 +87,43 @@ jobs:
       - if: matrix.suite == 'control-plane'
         uses: ./.github/actions/manager-install-test
 
-  push:
+  open-pr:
     needs: [rewrite, verify]
     if: needs.rewrite.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: formulas
           path: Formula/
-      - name: Commit + push the bump
+      # main's ruleset forbids direct pushes, so land the bump as a PR a
+      # maintainer merges. LATEST is release-API-derived + regex-validated in
+      # the rewrite job; passed via env, never interpolated into a command.
+      - name: Open bump PR
         env:
           LATEST: ${{ needs.rewrite.outputs.latest }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          branch="bump/${LATEST}"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
           git add Formula/
-          git commit -m "formulas: bump to $LATEST"
-          git pull --rebase origin main
-          git push
+          git commit -m "formulas: bump to ${LATEST}"
+          git push --force-with-lease -u origin "$branch"
+          if gh pr view "$branch" --json url -q .url 2>/dev/null; then
+            echo "PR already open for $branch — updated in place."
+            exit 0
+          fi
+          gh pr create --base main --head "$branch" \
+            --title "formulas: bump to ${LATEST}" \
+            --body "Automated bump to the latest llm-systems-manager release (\`${LATEST}\`). URLs + sha256s rewritten by \`bump-formulas.py\`; the full macOS+Linux × agent+control-plane install-test matrix passed in this run's verify job. Merge to publish — main's ruleset needs a maintainer merge (\`gh pr merge --squash --admin\`)." \
+          || {
+            echo "::warning::Could not auto-create the PR (Actions-created PRs may be disabled)."
+            echo "Open it from: https://github.com/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+          }
