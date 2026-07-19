@@ -16,7 +16,7 @@ class LlmSystemsManager < Formula
     libexec.install Dir["*"]
     # The typed config loader ships as a tracked .example; materialise it.
     cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
-    system Formula["python@3.12"].opt_bin/"python3.12", "-m", "venv", libexec/"venv"
+    system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
     system libexec/"venv/bin/pip", "install", "--upgrade", "pip"
     system libexec/"venv/bin/pip", "install", "-r",
            libexec/"llm-systems-manager/backend/requirements.txt"
@@ -26,14 +26,16 @@ class LlmSystemsManager < Formula
     (var/"llm-systems-manager/data").mkpath
     (var/"llm-systems-manager/ae-data").mkpath
     (var/"log/llm-systems-manager").mkpath
-    # State dirs symlink into var; ae-data is shared with the alarm-engine
-    # keg (manager first boot writes ae-tls.{crt,key} there).
-    rm_rf libexec/"data"
-    ln_s var/"llm-systems-manager/data", libexec/"data"
-    rm_rf libexec/"llm-systems-alarm-engine/data"
-    ln_s var/"llm-systems-manager/ae-data", libexec/"llm-systems-alarm-engine/data"
+    # State dirs symlink into var so they survive upgrades; ae-data is shared
+    # with the alarm-engine keg (manager first boot writes ae-tls there).
+    mgr_data = libexec/"data"
+    rm_r mgr_data if mgr_data.symlink? || mgr_data.exist?
+    ln_s var/"llm-systems-manager/data", mgr_data
+    ae_data = libexec/"llm-systems-alarm-engine/data"
+    rm_r ae_data if ae_data.symlink? || ae_data.exist?
+    ln_s var/"llm-systems-manager/ae-data", ae_data
     ENV["LSM_BREW_EXAMPLE"] = (libexec/"config/llm-systems.toml.example").to_s
-    ENV["LSM_BREW_CONFIG"]  = (etc/"llm-systems-manager/llm-systems.toml").to_s
+    ENV["LSM_BREW_CONFIG"] = (etc/"llm-systems-manager/llm-systems.toml").to_s
     ENV["LSM_BREW_LOG_DIR"] = (var/"log/llm-systems-manager").to_s
     system "/bin/bash", libexec/"tools/installer/brew-seed-config.sh"
   end
@@ -53,11 +55,9 @@ class LlmSystemsManager < Formula
   end
 
   service do
-    run [opt_libexec/"venv/bin/python3",
-         opt_libexec/"llm-systems-manager/backend/llm-systems-manager.py"]
+    run [opt_libexec/"venv/bin/python3", opt_libexec/"llm-systems-manager/backend/llm-systems-manager.py"]
     working_dir opt_libexec/"llm-systems-manager"
-    environment_variables PYTHONUNBUFFERED: "1",
-                          LLM_SYSTEMS_CONFIG: etc/"llm-systems-manager/llm-systems.toml"
+    environment_variables PYTHONUNBUFFERED: "1", LLM_SYSTEMS_CONFIG: etc/"llm-systems-manager/llm-systems.toml"
     keep_alive true
     log_path var/"log/llm-systems-manager/manager.stdout.log"
     error_log_path var/"log/llm-systems-manager/manager.stderr.log"

@@ -10,8 +10,10 @@ class LlmSystemsAgent < Formula
 
   on_macos do
     depends_on arch: :arm64
-    url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.7/llm-systems-agent-macos-arm64.tar.gz"
-    sha256 "f8a2ba26b536ce5bff79e9efdb4443b1e0ba9c7202599e41c096a6d366f624ec"
+    on_arm do
+      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.7/llm-systems-agent-macos-arm64.tar.gz"
+      sha256 "f8a2ba26b536ce5bff79e9efdb4443b1e0ba9c7202599e41c096a6d366f624ec"
+    end
   end
 
   on_linux do
@@ -43,11 +45,15 @@ class LlmSystemsAgent < Formula
 
   def caveats
     conflict_hint = if OS.mac?
-      "If a script-based install exists (~/Library/LaunchAgents/com.llm-systems-agent.plist),\n" \
-      "remove it first: both agents would fight over port 8082."
+      <<~EOS
+        If a script-based install exists (~/Library/LaunchAgents/com.llm-systems-agent.plist),
+        remove it first: both agents would fight over port 8082.
+      EOS
     else
-      "If a script/deb/rpm install exists (/etc/systemd/system/llm-systems-agent.service),\n" \
-      "stop and remove it first: both agents would fight over port 8082."
+      <<~EOS
+        If a script/deb/rpm install exists (/etc/systemd/system/llm-systems-agent.service),
+        stop and remove it first: both agents would fight over port 8082.
+      EOS
     end
     <<~EOS
       Set MANAGER_URL in #{etc}/llm-systems-agent/agent_config.yaml, then:

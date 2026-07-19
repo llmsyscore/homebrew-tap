@@ -16,7 +16,7 @@ class LlmSystemsAlarmEngine < Formula
     libexec.install Dir["*"]
     # The typed config loader ships as a tracked .example; materialise it.
     cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
-    system Formula["python@3.12"].opt_bin/"python3.12", "-m", "venv", libexec/"venv"
+    system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
     system libexec/"venv/bin/pip", "install", "--upgrade", "pip"
     system libexec/"venv/bin/pip", "install", "-r",
            libexec/"llm-systems-alarm-engine/requirements.txt"
@@ -26,10 +26,11 @@ class LlmSystemsAlarmEngine < Formula
     (var/"llm-systems-manager/ae-data").mkpath
     (var/"log/llm-systems-manager").mkpath
     # SQLite DBs + ae-tls.{crt,key} live in var, shared with the manager keg.
-    rm_rf libexec/"llm-systems-alarm-engine/data"
-    ln_s var/"llm-systems-manager/ae-data", libexec/"llm-systems-alarm-engine/data"
+    ae_data = libexec/"llm-systems-alarm-engine/data"
+    rm_r ae_data if ae_data.symlink? || ae_data.exist?
+    ln_s var/"llm-systems-manager/ae-data", ae_data
     ENV["LSM_BREW_EXAMPLE"] = (libexec/"config/llm-systems.toml.example").to_s
-    ENV["LSM_BREW_CONFIG"]  = (etc/"llm-systems-manager/llm-systems.toml").to_s
+    ENV["LSM_BREW_CONFIG"] = (etc/"llm-systems-manager/llm-systems.toml").to_s
     ENV["LSM_BREW_LOG_DIR"] = (var/"log/llm-systems-manager").to_s
     system "/bin/bash", libexec/"tools/installer/brew-seed-config.sh"
   end
@@ -51,8 +52,7 @@ class LlmSystemsAlarmEngine < Formula
   service do
     run [opt_libexec/"venv/bin/python3", "-m", "backend.alarm_engine"]
     working_dir opt_libexec/"llm-systems-alarm-engine"
-    environment_variables PYTHONUNBUFFERED: "1",
-                          LLM_SYSTEMS_CONFIG: etc/"llm-systems-manager/llm-systems.toml"
+    environment_variables PYTHONUNBUFFERED: "1", LLM_SYSTEMS_CONFIG: etc/"llm-systems-manager/llm-systems.toml"
     keep_alive true
     log_path var/"log/llm-systems-manager/alarm-engine.stdout.log"
     error_log_path var/"log/llm-systems-manager/alarm-engine.stderr.log"
