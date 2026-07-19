@@ -1,8 +1,8 @@
 class LlmSystemsAlarmEngine < Formula
   desc "Alarm engine for LLM Systems Manager (rules, alerts, notifications)"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.8/llm-systems-manager-v1.0.8.tar.gz"
-  sha256 "13a063a83b1b513a082c26beb164c245af5c410fda851fbcc4388c668220d58b"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.9/llm-systems-manager-v1.0.9.tar.gz"
+  sha256 "54ef9b4a51dbe766d2738b655ce762481a8421846b45a1bd8f540a501524e295"
   license "AGPL-3.0-only"
 
   livecheck do
