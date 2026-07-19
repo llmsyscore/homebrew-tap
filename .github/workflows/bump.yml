@@ -96,33 +96,55 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: formulas
           path: Formula/
-      # main's ruleset forbids direct pushes, so land the bump as a PR a
-      # maintainer merges. LATEST is release-API-derived + regex-validated in
-      # the rewrite job; passed via env, never interpolated into a command.
-      - name: Open bump PR
+      # The ruleset requires verified signatures on EVERY branch; a bot git
+      # commit is unsigned. createCommitOnBranch commits are signed by GitHub,
+      # so the bump lands via the API. LATEST is release-API-derived and
+      # regex-validated in rewrite; values reach commands via env only.
+      - name: Open bump PR (signed API commit)
         env:
           LATEST: ${{ needs.rewrite.outputs.latest }}
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           branch="bump/${LATEST}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
-          git add Formula/
-          git commit -m "formulas: bump to ${LATEST}"
-          git push --force-with-lease -u origin "$branch"
+          enc="${branch//\//%2F}"
+          commit_formulas() {
+            # $1 = expectedHeadOid to commit on top of
+            payload="$(jq -n --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" --arg oid "$1" \
+              --arg msg "formulas: bump to ${LATEST}" \
+              --arg agent "$(base64 -w0 Formula/llm-systems-agent.rb)" \
+              --arg ae "$(base64 -w0 Formula/llm-systems-alarm-engine.rb)" \
+              --arg mgr "$(base64 -w0 Formula/llm-systems-manager.rb)" \
+              '{query: "mutation($input: CreateCommitOnBranchInput!){ createCommitOnBranch(input:$input){ commit { oid } } }",
+                variables: {input: {branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                  expectedHeadOid: $oid, message: {headline: $msg},
+                  fileChanges: {additions: [
+                    {path: "Formula/llm-systems-agent.rb", contents: $agent},
+                    {path: "Formula/llm-systems-alarm-engine.rb", contents: $ae},
+                    {path: "Formula/llm-systems-manager.rb", contents: $mgr}]}}}}')"
+            curl -fsS -H "Authorization: Bearer ${GH_TOKEN}" -X POST -d "$payload" https://api.github.com/graphql \
+              | jq -re '.data.createCommitOnBranch.commit.oid'
+          }
           if gh pr view "$branch" --json url -q .url 2>/dev/null; then
-            echo "PR already open for $branch — updated in place."
+            # Open PR already tracks this branch — commit on its current head
+            # (deleting the ref would close the PR).
+            head_oid="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${enc}" -q .object.sha)"
+            oid="$(commit_formulas "$head_oid")" || { echo "::error::createCommitOnBranch failed"; exit 1; }
+            echo "updated existing bump PR with signed commit $oid"
             exit 0
           fi
+          main_oid="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" -q .object.sha)"
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${enc}" >/dev/null 2>&1 || true
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/heads/${branch}" -f sha="$main_oid" >/dev/null
+          oid="$(commit_formulas "$main_oid")" || { echo "::error::createCommitOnBranch failed"; exit 1; }
+          echo "signed bump commit: $oid"
           gh pr create --base main --head "$branch" \
             --title "formulas: bump to ${LATEST}" \
-            --body "Automated bump to the latest llm-systems-manager release (\`${LATEST}\`). URLs + sha256s rewritten by \`bump-formulas.py\`; the full macOS+Linux × agent+control-plane install-test matrix passed in this run's verify job. Merge to publish — main's ruleset needs a maintainer merge (\`gh pr merge --squash --admin\`)." \
+            --body "Automated bump to the latest llm-systems-manager release (\`${LATEST}\`). URLs + sha256s rewritten by \`bump-formulas.py\`; the full macOS+Linux x agent+control-plane install-test matrix passed in this run's verify job. Merge to publish (maintainer \`gh pr merge --squash --admin\`)." \
           || {
             echo "::warning::Could not auto-create the PR (Actions-created PRs may be disabled)."
             echo "Open it from: https://github.com/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
