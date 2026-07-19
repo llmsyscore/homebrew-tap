@@ -1,8 +1,8 @@
 class LlmSystemsManager < Formula
   desc "Real-time monitoring + control panel for a small LLM lab (manager)"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.7/llm-systems-manager-v1.0.7.tar.gz"
-  sha256 "be3f9a9e5eea7279094e3863db1f6d1f49250a110cb66d1585702d9ccdf59b54"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.0.10/llm-systems-manager-v1.0.10.tar.gz"
+  sha256 "7798f188ffc76f4a88ce3abd106ff38c57b811bc4968cc341222bd17de2e0296"
   license "AGPL-3.0-only"
 
   livecheck do
