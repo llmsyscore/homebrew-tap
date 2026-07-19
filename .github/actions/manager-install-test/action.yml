@@ -31,6 +31,34 @@ runs:
         done
         exit "$rc"
 
+    - name: InfluxDB provisioning via llm-systems-influx-setup (#447)
+      shell: bash
+      run: |
+        if ! command -v llm-systems-influx-setup >/dev/null 2>&1; then
+          echo "skip: llm-systems-influx-setup not installed (pre-v1.0.8 pin)"; exit 0
+        fi
+        brew install influxdb influxdb-cli
+        out="$(llm-systems-influx-setup)"
+        echo "$out"
+        echo "$out" | grep -q "RECORD THIS NOW"
+        cfg="$(brew --prefix)/etc/llm-systems-manager/llm-systems.toml"
+        grep -q '^metrics        = "REPLACE_ME"' "$cfg" && { echo "metrics token not written"; exit 1; }
+        grep -q '^metrics_rollup = "REPLACE_ME"' "$cfg" && { echo "rollup token not written"; exit 1; }
+        adm="$(sed -n 's/^admin    = "\(.*\)"$/\1/p' "$cfg" | head -n 1)"
+        [ -n "$adm" ] || { echo "admin operator token not written"; exit 1; }
+        # DB really provisioned — both buckets visible with the operator token
+        # the helper wrote into the config.
+        INFLUX_TOKEN="$adm" influx bucket list --org llm-systems-manager --hide-headers > /tmp/buckets.txt
+        cat /tmp/buckets.txt
+        grep -qw 'alarm_engine_metrics' /tmp/buckets.txt
+        grep -qw 'alarm_engine_metrics_rollup' /tmp/buckets.txt
+        # Secrets file stays 0600.
+        perms="$(stat -c '%a' "$cfg" 2>/dev/null || stat -f '%Lp' "$cfg")"
+        [ "$perms" = "600" ] || { echo "config perms $perms != 600"; exit 1; }
+        # Second run is an idempotent no-op.
+        out2="$(llm-systems-influx-setup)"
+        echo "$out2" | grep -q "nothing to do"
+
     - name: Manager serves /health (first boot creates CA + AE cert)
       shell: bash
       run: |
@@ -99,6 +127,7 @@ runs:
       run: |
         brew services stop llm-systems-alarm-engine
         brew services stop llm-systems-manager
+        brew services stop influxdb 2>/dev/null || true
         brew test llm-systems-manager
         brew test llm-systems-alarm-engine
         brew uninstall llm-systems-alarm-engine llm-systems-manager
