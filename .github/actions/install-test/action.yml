@@ -12,6 +12,18 @@ runs:
       run: |
         brew install --formula "${{ inputs.formula }}"
         llm-systems-agent --version | grep -E '^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}'
+
+    - name: Seeded config is the full example with AGENT_OS matched (#437)
+      shell: bash
+      run: |
+        cfg="$(brew --prefix)/etc/llm-systems-agent/agent_config.yaml"
+        test -f "$cfg"
+        want=linux; [ "$(uname -s)" = "Darwin" ] && want=macos
+        grep -Eq "^AGENT_OS:[[:space:]]+$want" "$cfg"
+        grep -q '^MANAGER_URL:' "$cfg"
+        # Full-example seed, not the old one-key stub.
+        grep -q '^LLAMA_ENABLED:' "$cfg"
+        grep -q '^LMS_ENABLED:' "$cfg"
     - name: Service serves /health + /identify
       shell: bash
       run: |

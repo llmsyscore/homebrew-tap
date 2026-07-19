@@ -17,6 +17,20 @@ runs:
         grep -q '^ingest_token = "REPLACE_ME"' "$cfg" && { echo "seeder left REPLACE_ME"; exit 1; }
         grep -q '^log_dir = "'"$(brew --prefix)"'/var/log/llm-systems-manager"' "$cfg"
 
+    - name: Keg payload audit (no dev/CI files — #437)
+      shell: bash
+      run: |
+        rc=0
+        for keg in llm-systems-manager llm-systems-alarm-engine; do
+          lib="$(brew --prefix)/opt/$keg/libexec"
+          bad="$(find "$lib" -path "$lib/venv" -prune -o -print \
+            | grep -E '/(docker|design|devel|docs/screenshots|tools/packaging|tests|\.github)(/|$)|docker-compose\.yml|\.dockerignore|/ci-[a-z0-9-]+\.sh$' || true)"
+          if [ -n "$bad" ]; then
+            echo "dev/CI files shipped in the $keg keg:"; echo "$bad"; rc=1
+          fi
+        done
+        exit "$rc"
+
     - name: Manager serves /health (first boot creates CA + AE cert)
       shell: bash
       run: |
@@ -49,6 +63,32 @@ runs:
         done
         if [ -z "$ok" ]; then
           echo "alarm engine never became healthy; service state + logs:"
+          brew services list || true
+          tail -n 100 "$(brew --prefix)"/var/log/llm-systems-manager/alarm-engine*.log 2>/dev/null || true
+          exit 1
+        fi
+
+    - name: AE self-restart via management API respawns it (v1.0.8+ — #437)
+      shell: bash
+      run: |
+        ver="$(brew list --versions llm-systems-alarm-engine | awk '{print $2}')"
+        case "$ver" in
+          1.0.[0-7]) echo "skip: $ver predates the restart-pending non-zero exit"; exit 0 ;;
+        esac
+        cfg="$(brew --prefix)/etc/llm-systems-manager/llm-systems.toml"
+        tok="$(sed -n 's/^management_token = "\(.*\)"$/\1/p' "$cfg" | head -n 1)"
+        [ -n "$tok" ] || { echo "no management_token in seeded config"; exit 1; }
+        curl -fsk -X POST -H "Authorization: Bearer $tok" https://127.0.0.1:8081/api/alarm/admin/self-restart 2>/dev/null \
+          || curl -fs -X POST -H "Authorization: Bearer $tok" http://127.0.0.1:8081/api/alarm/admin/self-restart
+        sleep 4
+        ok=""
+        for _ in $(seq 1 30); do
+          if curl -fsk https://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
+          if curl -fs  http://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
+          sleep 2
+        done
+        if [ -z "$ok" ]; then
+          echo "alarm engine never came back after self-restart (Restart=on-failure needs a non-zero exit):"
           brew services list || true
           tail -n 100 "$(brew --prefix)"/var/log/llm-systems-manager/alarm-engine*.log 2>/dev/null || true
           exit 1

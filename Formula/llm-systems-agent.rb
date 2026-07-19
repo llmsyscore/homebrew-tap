@@ -28,18 +28,15 @@ class LlmSystemsAgent < Formula
   end
 
   def install
+    seeded = File.read("agent_config.yaml.example")
     bin.install "llm-systems-agent"
     (etc/"llm-systems-agent").install "agent_config.yaml.example"
-    # Minimal live config: blank values are ignored at load, so the agent
-    # boots on detected defaults until the operator fills in MANAGER_URL.
+    # Live config = the full example with AGENT_OS matched to this platform;
+    # every other key keeps its runtime-detected default until edited.
     config = etc/"llm-systems-agent/agent_config.yaml"
     unless config.exist?
-      config.write <<~EOS
-        # llm-systems-agent config — set MANAGER_URL to your manager, e.g.
-        # "http://manager-host:5000". Full key reference: agent_config.yaml.example
-        # (do not copy it wholesale — its AGENT_OS/defaults may not match this host).
-        MANAGER_URL: ""
-      EOS
+      seeded = seeded.sub(/^AGENT_OS:(\s+)\S+/, "AGENT_OS:\\1#{OS.mac? ? "macos" : "linux"}")
+      config.write seeded
     end
   end
 

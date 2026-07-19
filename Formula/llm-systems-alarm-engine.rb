@@ -14,6 +14,7 @@ class LlmSystemsAlarmEngine < Formula
 
   def install
     libexec.install Dir["*"]
+    prune_dev_payload
     # The typed config loader ships as a tracked .example; materialise it.
     cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
     system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
@@ -23,6 +24,22 @@ class LlmSystemsAlarmEngine < Formula
     # watchfiles ships a prebuilt .so whose dylib id breaks Homebrew's macOS
     # relocation; only uvicorn --reload uses it, which this launcher never does.
     quiet_system libexec/"venv/bin/pip", "uninstall", "-y", "watchfiles"
+  end
+
+  # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
+  def prune_dev_payload
+    %w[docker design devel docs/screenshots tools/packaging plans backups data
+       .github .claude docker-compose.yml .dockerignore .env.example
+       .gitignore .gitattributes .llmsys-release].each do |p|
+      rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
+    end
+    Dir[libexec/"tools/installer/ci-*.sh"].each { |f| rm(f) }
+    Dir[libexec/"**/{tests,test,__pycache__,.pytest_cache,node_modules}"].each do |d|
+      rm_r(d) if File.exist?(d)
+    end
+    Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
+      rm(f) if File.exist?(f)
+    end
   end
 
   def post_install
@@ -40,15 +57,12 @@ class LlmSystemsAlarmEngine < Formula
 
   def caveats
     <<~EOS
-      Shared config (seeded by whichever formula installs first):
+      Config is shared with llm-systems-manager (InfluxDB + token setup is
+      covered in that formula's caveats):
         #{etc}/llm-systems-manager/llm-systems.toml
       Start llm-systems-manager first — its first boot issues this engine's
       TLS cert — then:
         brew services start llmsyscore/tap/llm-systems-alarm-engine
-      Metric storage needs InfluxDB v2: `brew install influxdb`, run
-      `influx setup`, then fill [influxdb] + [influxdb.tokens] in the config.
-      The engine starts without it, but history + alert evaluation stay
-      degraded until the tokens are set.
     EOS
   end
 
