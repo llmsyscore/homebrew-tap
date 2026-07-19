@@ -1,0 +1,66 @@
+name: Control-plane install + service smoke test
+description: >-
+  Install the llm-systems-manager + llm-systems-alarm-engine formulas, boot the
+  manager then the alarm engine under brew services, assert both /health
+  endpoints, then uninstall clean. Linux callers must have run the
+  setup-brew-ci action first.
+runs:
+  using: composite
+  steps:
+    - name: Install formulas + seeded config
+      shell: bash
+      run: |
+        brew install --formula llmsyscore/tap/llm-systems-manager \
+                               llmsyscore/tap/llm-systems-alarm-engine
+        cfg="$(brew --prefix)/etc/llm-systems-manager/llm-systems.toml"
+        test -f "$cfg"
+        grep -q '^ingest_token = "REPLACE_ME"' "$cfg" && { echo "seeder left REPLACE_ME"; exit 1; }
+        grep -q '^log_dir = "'"$(brew --prefix)"'/var/log/llm-systems-manager"' "$cfg"
+
+    - name: Manager serves /health (first boot creates CA + AE cert)
+      shell: bash
+      run: |
+        brew services start llm-systems-manager
+        ok=""
+        for _ in $(seq 1 45); do
+          if curl -fsS http://127.0.0.1:5000/health 2>/dev/null | grep -q '"status":"ok"'; then ok=1; break; fi
+          sleep 2
+        done
+        if [ -z "$ok" ]; then
+          echo "manager never became healthy; service state + port owner + logs:"
+          brew services list || true
+          lsof -nP -i :5000 || true
+          tail -n 100 "$(brew --prefix)"/var/log/llm-systems-manager/manager*.log 2>/dev/null || true
+          exit 1
+        fi
+        # First boot must have bootstrapped the internal CA + the AE cert.
+        test -f "$(brew --prefix)/var/llm-systems-manager/data/internal-ca.crt"
+        test -f "$(brew --prefix)/var/llm-systems-manager/ae-data/ae-tls.crt"
+
+    - name: Alarm engine serves /health
+      shell: bash
+      run: |
+        brew services start llm-systems-alarm-engine
+        ok=""
+        for _ in $(seq 1 45); do
+          if curl -fsk https://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
+          if curl -fs  http://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
+          sleep 2
+        done
+        if [ -z "$ok" ]; then
+          echo "alarm engine never became healthy; service state + logs:"
+          brew services list || true
+          tail -n 100 "$(brew --prefix)"/var/log/llm-systems-manager/alarm-engine*.log 2>/dev/null || true
+          exit 1
+        fi
+
+    - name: Stop, brew test, uninstall clean
+      shell: bash
+      run: |
+        brew services stop llm-systems-alarm-engine
+        brew services stop llm-systems-manager
+        brew test llm-systems-manager
+        brew test llm-systems-alarm-engine
+        brew uninstall llm-systems-alarm-engine llm-systems-manager
+        # Config + state must survive uninstall (brew convention).
+        test -f "$(brew --prefix)/etc/llm-systems-manager/llm-systems.toml"
