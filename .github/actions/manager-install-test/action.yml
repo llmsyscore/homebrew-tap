@@ -37,7 +37,12 @@ runs:
         if ! command -v llm-systems-influx-setup >/dev/null 2>&1; then
           echo "skip: llm-systems-influx-setup not installed (pre-v1.0.8 pin)"; exit 0
         fi
-        brew install influxdb influxdb-cli
+        # Homebrew's plain influxdb formula is InfluxDB 3.x (no v2 API);
+        # helpers before the influxdb@2 retarget can't provision it — skip.
+        if ! grep -q 'influxdb@2' "$(command -v llm-systems-influx-setup)"; then
+          echo "skip: helper predates the influxdb@2 retarget (pre-v1.0.11 pin)"; exit 0
+        fi
+        brew install influxdb@2 influxdb-cli
         out="$(llm-systems-influx-setup)"
         echo "$out"
         echo "$out" | grep -q "RECORD THIS NOW"
@@ -127,7 +132,7 @@ runs:
       run: |
         brew services stop llm-systems-alarm-engine
         brew services stop llm-systems-manager
-        brew services stop influxdb 2>/dev/null || true
+        brew services stop influxdb@2 2>/dev/null || true
         brew test llm-systems-manager
         brew test llm-systems-alarm-engine
         brew uninstall llm-systems-alarm-engine llm-systems-manager
