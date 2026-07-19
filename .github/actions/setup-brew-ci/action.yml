@@ -1,0 +1,60 @@
+name: Set up Homebrew CI
+description: >-
+  Prepare a runner for brew-services formula testing. On Linux: install
+  Homebrew and enable a lingering user systemd session (brew services needs
+  systemd user units); no-op on macOS. Then either link the current checkout
+  in as the live tap (link-checkout) or tap the published tap (tap input).
+inputs:
+  link-checkout:
+    description: Link the current checkout in as the live llmsyscore/homebrew-tap (requires actions/checkout first)
+    required: false
+    default: "false"
+  tap:
+    description: Published tap to `brew tap` instead of linking a checkout (e.g. llmsyscore/tap)
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Set up Homebrew (Linux)
+      if: runner.os == 'Linux'
+      uses: Homebrew/actions/setup-homebrew@master
+    - name: Enable lingering user systemd session (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo loginctl enable-linger "$(id -un)"
+        uid="$(id -u)"
+        ok=""
+        for _ in $(seq 1 30); do
+          if [ -S "/run/user/$uid/bus" ]; then ok=1; break; fi
+          sleep 1
+        done
+        if [ -z "$ok" ]; then
+          echo "user dbus socket never appeared at /run/user/$uid/bus"
+          loginctl user-status "$(id -un)" || true
+          exit 1
+        fi
+        {
+          echo "XDG_RUNTIME_DIR=/run/user/$uid"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$uid/bus"
+        } >> "$GITHUB_ENV"
+        export XDG_RUNTIME_DIR="/run/user/$uid"
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus"
+        systemctl --user is-system-running --wait || true
+        systemctl --user show-environment >/dev/null
+    - name: Link checkout as the live tap
+      if: inputs.link-checkout == 'true'
+      shell: bash
+      run: |
+        mkdir -p "$(brew --repository)/Library/Taps/llmsyscore"
+        ln -sfn "$PWD" "$(brew --repository)/Library/Taps/llmsyscore/homebrew-tap"
+        brew trust llmsyscore/tap || true
+    - name: Tap published tap
+      if: inputs.link-checkout != 'true' && inputs.tap != ''
+      shell: bash
+      env:
+        TAP: ${{ inputs.tap }}
+      run: |
+        brew tap "$TAP"
+        brew trust "$TAP" || true
