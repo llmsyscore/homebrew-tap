@@ -20,6 +20,9 @@ class LlmSystemsAlarmEngine < Formula
     system libexec/"venv/bin/pip", "install", "--upgrade", "pip"
     system libexec/"venv/bin/pip", "install", "-r",
            libexec/"llm-systems-alarm-engine/requirements.txt"
+    # watchfiles ships a prebuilt .so whose dylib id breaks Homebrew's macOS
+    # relocation; only uvicorn --reload uses it, which this launcher never does.
+    quiet_system libexec/"venv/bin/pip", "uninstall", "-y", "watchfiles"
   end
 
   def post_install
