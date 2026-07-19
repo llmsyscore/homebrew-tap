@@ -70,8 +70,9 @@ class LlmSystemsManager < Formula
       Start the manager BEFORE the alarm engine — its first boot creates the
       internal CA and issues the alarm engine's TLS cert:
         brew services start llmsyscore/tap/llm-systems-manager
-      Metric history needs InfluxDB v2 (server and CLI are separate formulas):
-        brew install influxdb influxdb-cli
+      Metric history needs InfluxDB v2 — install the versioned formula
+      (plain `influxdb` is InfluxDB 3.x, which this stack cannot use):
+        brew install influxdb@2 influxdb-cli
         llm-systems-influx-setup   # onboards + creates buckets/tokens + fills the config
       Dashboard: http://localhost:5000. Don't mix with a script/package
       install on the same host — both would fight over port 5000.
