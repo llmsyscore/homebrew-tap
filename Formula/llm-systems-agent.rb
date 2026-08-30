@@ -11,19 +11,19 @@ class LlmSystemsAgent < Formula
   on_macos do
     depends_on arch: :arm64
     on_arm do
-      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.3.0/llm-systems-agent-macos-arm64.tar.gz"
-      sha256 "4fee7636ce890fa66af00d6d140323121508c9ee25b3e4b075975f576a3d4317"
+      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.4.0/llm-systems-agent-macos-arm64.tar.gz"
+      sha256 "2395aecc86c9c60f23a786db8828d8719676db0ff62fd11dc1fd266bdb448fd5"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.3.0/llm-systems-agent-linux-x86_64.tar.gz"
-      sha256 "4f2737ebd4eff53d7d37d2ccbf2ddcf047c73bec8cb56f4e4ceceaf984b579f5"
+      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.4.0/llm-systems-agent-linux-x86_64.tar.gz"
+      sha256 "c7305b541828b2ed87bf4691977dcf293ddd289f07896ea7376e5e0a53acedc3"
     end
     on_arm do
-      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.3.0/llm-systems-agent-linux-arm64.tar.gz"
-      sha256 "2d67dc13ea0c6c439521ee6887f13addd9c1cfb3069f3d008d2278b1566876d4"
+      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.4.0/llm-systems-agent-linux-arm64.tar.gz"
+      sha256 "c82f90c12a7fd7d68ec16eaf148d30dcf7102364f9ebc8ed76d2040ab32fd72c"
     end
   end
 
