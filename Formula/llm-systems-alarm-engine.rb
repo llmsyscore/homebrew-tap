@@ -42,17 +42,22 @@ class LlmSystemsAlarmEngine < Formula
     end
   end
 
-  def post_install
-    (var/"llm-systems-manager/ae-data").mkpath
-    (var/"log/llm-systems-manager").mkpath
+  post_install_steps do
+    mkdir_p "llm-systems-manager/ae-data", base: :var
+    mkdir_p "log/llm-systems-manager", base: :var
     # SQLite DBs + ae-tls.{crt,key} live in var, shared with the manager keg.
-    ae_data = libexec/"llm-systems-alarm-engine/data"
-    rm_r ae_data if ae_data.symlink? || ae_data.exist?
-    ln_s var/"llm-systems-manager/ae-data", ae_data
-    ENV["LSM_BREW_EXAMPLE"] = (libexec/"config/llm-systems.toml.example").to_s
-    ENV["LSM_BREW_CONFIG"] = (etc/"llm-systems-manager/llm-systems.toml").to_s
-    ENV["LSM_BREW_LOG_DIR"] = (var/"log/llm-systems-manager").to_s
-    system "/bin/bash", libexec/"tools/installer/brew-seed-config.sh"
+    remove "llm-systems-alarm-engine/data", base: :libexec, recursive: true
+    symlink "llm-systems-manager/ae-data", "llm-systems-alarm-engine/data",
+            source_base: :var, target_base: :libexec, overwrite: true
+    run "/bin/bash",
+        args:           ["{{libexec}}/tools/installer/brew-seed-config.sh"],
+        env:            {
+          "LSM_BREW_EXAMPLE" => "{{libexec}}/config/llm-systems.toml.example",
+          "LSM_BREW_CONFIG"  => "{{etc}}/llm-systems-manager/llm-systems.toml",
+          "LSM_BREW_LOG_DIR" => "{{var}}/log/llm-systems-manager",
+        },
+        writable_paths: ["llm-systems-manager"],
+        writable_base:  :etc
   end
 
   def caveats
