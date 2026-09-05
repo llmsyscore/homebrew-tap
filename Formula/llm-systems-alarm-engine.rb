@@ -1,8 +1,8 @@
 class LlmSystemsAlarmEngine < Formula
   desc "Alarm engine for LLM Systems Manager (rules, alerts, notifications)"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v1.4.0/llm-systems-manager-v1.4.0.tar.gz"
-  sha256 "b37b5d5f711f968cbd237006f34f4fe8e42b76467e4716c51124c48c154a1733"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v2.0.0/llm-systems-manager-v2.0.0.tar.gz"
+  sha256 "e651de0778f9e272783bc7f9a2f5e75b365818e28f3ec01765ce506fbac56acb"
   license "AGPL-3.0-only"
 
   livecheck do
@@ -42,17 +42,22 @@ class LlmSystemsAlarmEngine < Formula
     end
   end
 
-  def post_install
-    (var/"llm-systems-manager/ae-data").mkpath
-    (var/"log/llm-systems-manager").mkpath
+  post_install_steps do
+    mkdir_p "llm-systems-manager/ae-data", base: :var
+    mkdir_p "log/llm-systems-manager", base: :var
     # SQLite DBs + ae-tls.{crt,key} live in var, shared with the manager keg.
-    ae_data = libexec/"llm-systems-alarm-engine/data"
-    rm_r ae_data if ae_data.symlink? || ae_data.exist?
-    ln_s var/"llm-systems-manager/ae-data", ae_data
-    ENV["LSM_BREW_EXAMPLE"] = (libexec/"config/llm-systems.toml.example").to_s
-    ENV["LSM_BREW_CONFIG"] = (etc/"llm-systems-manager/llm-systems.toml").to_s
-    ENV["LSM_BREW_LOG_DIR"] = (var/"log/llm-systems-manager").to_s
-    system "/bin/bash", libexec/"tools/installer/brew-seed-config.sh"
+    remove "llm-systems-alarm-engine/data", base: :libexec, recursive: true
+    symlink "llm-systems-manager/ae-data", "llm-systems-alarm-engine/data",
+            source_base: :var, target_base: :libexec, overwrite: true
+    run "/bin/bash",
+        args:           ["{{libexec}}/tools/installer/brew-seed-config.sh"],
+        env:            {
+          "LSM_BREW_EXAMPLE" => "{{libexec}}/config/llm-systems.toml.example",
+          "LSM_BREW_CONFIG"  => "{{etc}}/llm-systems-manager/llm-systems.toml",
+          "LSM_BREW_LOG_DIR" => "{{var}}/log/llm-systems-manager",
+        },
+        writable_paths: ["llm-systems-manager"],
+        writable_base:  :etc
   end
 
   def caveats
