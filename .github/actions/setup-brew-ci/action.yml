@@ -49,12 +49,12 @@ runs:
       run: |
         mkdir -p "$(brew --repository)/Library/Taps/llmsyscore"
         ln -sfn "$PWD" "$(brew --repository)/Library/Taps/llmsyscore/homebrew-tap"
-        brew trust llmsyscore/tap || true
+        brew trust --tap llmsyscore/tap || true
     - name: Tap published tap
       if: inputs.link-checkout != 'true' && inputs.tap != ''
       shell: bash
       env:
         TAP: ${{ inputs.tap }}
       run: |
+        brew trust --tap "$TAP" || true
         brew tap "$TAP"
-        brew trust "$TAP" || true

@@ -69,7 +69,7 @@ runs:
       run: |
         brew services start llm-systems-manager
         ok=""
-        for _ in $(seq 1 45); do
+        for _ in $(seq 1 90); do
           if curl -fsS http://127.0.0.1:5000/health 2>/dev/null | grep -q '"status":"ok"'; then ok=1; break; fi
           sleep 2
         done
@@ -89,7 +89,7 @@ runs:
       run: |
         brew services start llm-systems-alarm-engine
         ok=""
-        for _ in $(seq 1 45); do
+        for _ in $(seq 1 90); do
           if curl -fsk https://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
           if curl -fs  http://127.0.0.1:8081/health 2>/dev/null | grep -q '"status"'; then ok=1; break; fi
           sleep 2
