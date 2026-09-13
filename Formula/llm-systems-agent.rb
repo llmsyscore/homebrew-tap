@@ -14,6 +14,10 @@ class LlmSystemsAgent < Formula
       url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v2.0.0/llm-systems-agent-macos-arm64.tar.gz"
       sha256 "3e905b1b876c73f86c579aa215c46c09763f347da4e85f7257b0aff63b3bc3bb"
     end
+    on_intel do
+      url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v2.0.0/llm-systems-agent-macos-arm64.tar.gz"
+      sha256 "3e905b1b876c73f86c579aa215c46c09763f347da4e85f7257b0aff63b3bc3bb"
+    end
   end
 
   on_linux do
