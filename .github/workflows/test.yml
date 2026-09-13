@@ -36,6 +36,7 @@ jobs:
           link-checkout: "true"
       - name: Audit + style
         run: |
+          brew readall --os=all --arch=all llmsyscore/tap
           brew style llmsyscore/tap
           brew audit llmsyscore/tap/llm-systems-agent \
                      llmsyscore/tap/llm-systems-manager \
