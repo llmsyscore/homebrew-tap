@@ -2,7 +2,8 @@ name: Formula CI
 
 # Symlinks the checkout in as the live tap so audit/install exercise THIS
 # revision, then runs the shared install-test composite actions — agent and
-# control plane as parallel suites, on macOS and Linux.
+# control plane as parallel suites, on macOS and Linux. published-tap runs
+# setup-brew-ci with tap: as the nightly does, so tap-time trust is covered.
 
 on:
   push:
@@ -45,3 +46,21 @@ jobs:
           formula: llmsyscore/tap/llm-systems-agent
       - if: matrix.suite == 'control-plane'
         uses: ./.github/actions/manager-install-test
+
+  published-tap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-brew-ci
+        with:
+          tap: llmsyscore/tap
+      - name: Formulae load from the published tap
+        run: |
+          brew info llmsyscore/tap/llm-systems-agent \
+                    llmsyscore/tap/llm-systems-manager \
+                    llmsyscore/tap/llm-systems-alarm-engine
