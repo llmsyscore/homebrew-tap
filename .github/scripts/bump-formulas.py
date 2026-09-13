@@ -10,7 +10,7 @@ import urllib.request
 RELEASE_BASE = "https://github.com/llmsyscore/llm-systems-manager/releases/download"
 # Expected pinned-url count per formula — update when a formula adds/drops assets.
 PATHS = {
-    "Formula/llm-systems-agent.rb": 3,
+    "Formula/llm-systems-agent.rb": 4,
     "Formula/llm-systems-manager.rb": 1,
     "Formula/llm-systems-alarm-engine.rb": 1,
 }
