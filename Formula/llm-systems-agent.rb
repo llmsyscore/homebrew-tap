@@ -40,6 +40,10 @@ class LlmSystemsAgent < Formula
     config = etc/"llm-systems-agent/agent_config.yaml"
     unless config.exist?
       seeded = seeded.sub(/^AGENT_OS:(\s+)\S+/, "AGENT_OS:\\1#{OS.mac? ? "macos" : "linux"}")
+      # Enrollment secret lives beside the config, not in the keg (survives upgrades).
+      unless seeded.match?(/^ENROLLMENT_SECRET_FILE:/)
+        seeded << "\nENROLLMENT_SECRET_FILE: \"#{etc}/llm-systems-agent/enrollment-secret\"\n"
+      end
       config.write seeded
     end
   end
@@ -59,6 +63,9 @@ class LlmSystemsAgent < Formula
     <<~EOS
       Set MANAGER_URL in #{etc}/llm-systems-agent/agent_config.yaml, then:
         brew services start llmsyscore/tap/llm-systems-agent
+      If the manager requires an enrollment secret (Admin > Agents > Manage),
+      save it to #{etc}/llm-systems-agent/enrollment-secret before starting;
+      the agent deletes that file once it is approved.
       Upgrade with `brew upgrade llm-systems-agent` — a manager-triggered agent
       self-update is reverted by the next brew upgrade, so prefer brew here.
       #{conflict_hint}

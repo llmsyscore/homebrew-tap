@@ -84,6 +84,32 @@ runs:
         test -f "$(brew --prefix)/var/llm-systems-manager/data/internal-ca.crt"
         test -f "$(brew --prefix)/var/llm-systems-manager/ae-data/ae-tls.crt"
 
+    - name: First admin sign-in with a temporary password (#1165)
+      shell: bash
+      run: |
+        if ! command -v llm-systems-admin-password >/dev/null 2>&1; then
+          echo "skip: llm-systems-admin-password not installed (pre-v3.1 pin)"; exit 0
+        fi
+        mgr=http://127.0.0.1:5000
+        code() { curl -s -o /dev/null -w '%{http_code}' -m 10 "$@" || true; }
+        read -r user temp < <(llm-systems-admin-password reset --yes --porcelain)
+        [ -n "$temp" ] || { echo "the admin password tool printed no temporary password"; exit 1; }
+        jar="$(mktemp)"
+        c="$(code -c "$jar" --data-urlencode "username=$user" --data-urlencode "password=$temp" "$mgr/login")"
+        case "$c" in 302|303) ;; *) echo "sign-in with the temporary password returned $c"; exit 1 ;; esac
+        c="$(code -b "$jar" "$mgr/api/me")"
+        [ "$c" = "403" ] || { echo "temporary password was not held at the change step (/api/me returned $c)"; exit 1; }
+        body="$(jq -n --arg c "$temp" --arg n "ci-admin-rotated-pw" '{current_password: $c, new_password: $n}')"
+        c="$(code -b "$jar" -X POST -H 'Content-Type: application/json' -d "$body" "$mgr/api/account/password")"
+        [ "$c" = "200" ] || { echo "password change returned $c"; exit 1; }
+        c="$(code -b "$jar" "$mgr/api/me")"
+        [ "$c" = "200" ] || { echo "/api/me after the password change returned $c"; exit 1; }
+        rm -f "$jar"
+        # The user store belongs to the service user, never root.
+        store="$(brew --prefix)/var/llm-systems-manager/data/manager_users.json"
+        test -f "$store"
+        [ "$(stat -c '%U' "$store" 2>/dev/null || stat -f '%Su' "$store")" = "$(id -un)" ]
+
     - name: Alarm engine serves /health
       shell: bash
       run: |
