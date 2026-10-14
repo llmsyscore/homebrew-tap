@@ -21,6 +21,8 @@ Prebuilt per-platform binary. Configure: set `MANAGER_URL` in
 
 (launchd on macOS, a systemd user unit on Linux).
 
+If the manager requires an enrollment secret (shown under **Admin → Agents → Manage**), save it to `$(brew --prefix)/etc/llm-systems-agent/enrollment-secret` before the first start. The agent deletes that file once it is approved.
+
 `brew upgrade llm-systems-agent` picks up new releases automatically — a scheduled job in the tap tracks each GitHub Release and bumps the formula. The dashboard's **Admin → Agents → Update** self-update also works, but a later `brew upgrade` replaces the binary again, so prefer `brew` on Homebrew-managed hosts. Uninstall with `brew services stop llm-systems-agent && brew uninstall llm-systems-agent`.
 
 ## Control plane (manager + alarm engine)
@@ -40,6 +42,8 @@ llm-systems-influx-setup        # onboards InfluxDB, creates the buckets + scope
                                 # tokens, and writes [influxdb.tokens] into the config
 brew services start llm-systems-manager
 brew services start llm-systems-alarm-engine
+llm-systems-admin-password reset   # temporary admin password for the first sign-in;
+                                   # the dashboard asks you to replace it right away
 ```
 
 **Anonymous reports.** The manager sends one anonymous install report on its first start and crash reports after that; the daily diagnostic report is off until you turn it on. Homebrew installs do not read the `LLMSYS_TELEMETRY` variable the other installers use. To start with reports off, set `install_report = false` and `crash_reports = false` under `[manager.telemetry]` in the shared config before the first `brew services start`, or switch them off later in **Settings › Telemetry & analytics** on the dashboard.

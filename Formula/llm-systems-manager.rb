@@ -27,6 +27,16 @@ class LlmSystemsManager < Formula
       influx_helper.chmod 0755
       bin.install_symlink influx_helper => "llm-systems-influx-setup"
     end
+    # Ships from v3.1 tarballs — guard so older tarballs still build.
+    pw_tool = libexec/"llm-systems-manager/backend/admin_password.py"
+    if pw_tool.exist?
+      (bin/"llm-systems-admin-password").write <<~SH
+        #!/bin/bash
+        export LLM_SYSTEMS_CONFIG="${LLM_SYSTEMS_CONFIG:-#{etc}/llm-systems-manager/llm-systems.toml}"
+        exec "#{opt_libexec}/venv/bin/python3" "#{opt_libexec}/llm-systems-manager/backend/admin_password.py" "$@"
+      SH
+      (bin/"llm-systems-admin-password").chmod 0755
+    end
   end
 
   # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
@@ -69,12 +79,23 @@ class LlmSystemsManager < Formula
   end
 
   def caveats
-    <<~EOS
+    signin_hint = if (libexec/"llm-systems-manager/backend/admin_password.py").exist?
+      <<~EOS
+        First sign-in: create a temporary admin password (the dashboard asks
+        you to replace it right away):
+          llm-systems-admin-password reset
+      EOS
+    else
+      ""
+    end
+    start_hint = <<~EOS
       Shared config (also read by llm-systems-alarm-engine):
         #{etc}/llm-systems-manager/llm-systems.toml
       Start the manager BEFORE the alarm engine — its first boot creates the
       internal CA and issues the alarm engine's TLS cert:
         brew services start llmsyscore/tap/llm-systems-manager
+    EOS
+    influx_hint = <<~EOS
       Metric history needs InfluxDB v2 — install the versioned formula
       (plain `influxdb` is InfluxDB 3.x, which this stack cannot use):
         brew install influxdb@2 influxdb-cli
@@ -82,6 +103,7 @@ class LlmSystemsManager < Formula
       Dashboard: http://localhost:5000. Don't mix with a script/package
       install on the same host — both would fight over port 5000.
     EOS
+    [start_hint, signin_hint, influx_hint].join
   end
 
   service do
