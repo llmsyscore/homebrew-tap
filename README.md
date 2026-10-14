@@ -42,6 +42,8 @@ brew services start llm-systems-manager
 brew services start llm-systems-alarm-engine
 ```
 
+**Anonymous reports.** The manager sends one anonymous install report on its first start and crash reports after that; the daily diagnostic report is off until you turn it on. Homebrew installs do not read the `LLMSYS_TELEMETRY` variable the other installers use. To start with reports off, set `install_report = false` and `crash_reports = false` under `[manager.telemetry]` in the shared config before the first `brew services start`, or switch them off later in **Settings › Telemetry & analytics** on the dashboard.
+
 `llm-systems-influx-setup` (installed by the manager formula) needs both `influxdb@2` (the v2 server — Homebrew's plain `influxdb` formula is InfluxDB 3.x, whose API this stack does not speak) and `influxdb-cli` (the `influx` command ships separately). To do it by hand instead: `brew services start influxdb@2`, `influx setup`, create the buckets/tokens, and fill `[influxdb.tokens]` in the TOML.
 
 `brew upgrade` tracks new releases automatically (the same tap cron that bumps the agent formula bumps these). The dashboard is at `http://<host>:5000`; the alarm engine can run without InfluxDB, but history and alert evaluation stay degraded until the tokens are filled in.
