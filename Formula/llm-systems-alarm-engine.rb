@@ -28,7 +28,7 @@ class LlmSystemsAlarmEngine < Formula
 
   # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
   def prune_dev_payload
-    %w[docker design devel docs/screenshots tools/packaging plans backups data
+    %w[docker design devel demo docs/screenshots tools/packaging website plans backups data
        .github .claude docker-compose.yml .dockerignore .env.example
        .gitignore .gitattributes .llmsys-release].each do |p|
       rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
