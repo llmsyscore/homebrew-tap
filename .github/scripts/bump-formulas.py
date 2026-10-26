@@ -2,7 +2,8 @@
 """Rewrite every formula's release urls + per-asset sha256 to a given tag.
 
 Usage: bump-formulas.py vX.Y.Z  (run from the tap root; used by bump.yml).
-Fetches each asset's published .sha256 and fails loudly on any drift."""
+Urls point at the -brew file copies; checksums come from the original's .sha256.
+Fails loudly on any drift or a missing -brew file."""
 import re
 import sys
 import urllib.request
@@ -29,6 +30,19 @@ def main() -> None:
             shas[asset] = s
         return shas[asset]
 
+    def brew_name(asset: str) -> str:
+        return re.sub(r"(-brew)?\.tar\.gz$", "-brew.tar.gz", asset)
+
+    def check_exists(asset: str) -> None:
+        # HEAD (redirects followed by urlopen) on the -brew file.
+        req = urllib.request.Request(f"{RELEASE_BASE}/{tag}/{asset}", method="HEAD")
+        try:
+            urllib.request.urlopen(req).close()
+        except Exception as e:
+            sys.exit(f"missing release file {asset} for {tag}: {e}")
+
+    pending: dict[str, str] = {}
+    brew_assets: set[str] = set()
     for path, expected_urls in PATHS.items():
         src = open(path).read()
         src = re.sub(r"releases/download/v[0-9][^/]*/", f"releases/download/{tag}/", src)
@@ -42,7 +56,9 @@ def main() -> None:
             m = re.search(r'url ".*/releases/download/[^/]+/([^"]+)"', line)
             if m:
                 assert cur_asset is None, f"url without sha256 in {path}"
-                cur_asset = m.group(1)
+                cur_asset = re.sub(r"-brew(\.tar\.gz)$", r"\1", m.group(1))
+                brew_assets.add(brew_name(cur_asset))
+                line = line.replace(m.group(1), brew_name(cur_asset))
                 n_urls += 1
             m = re.match(r'^(\s*sha256 ")[0-9a-f]{64}(")\s*$', line)
             if m:
@@ -53,7 +69,11 @@ def main() -> None:
         assert cur_asset is None, f"trailing url without sha256 in {path}"
         assert n_urls == expected_urls, \
             f"{path}: expected {expected_urls} pinned urls, saw {n_urls}"
-        open(path, "w").write("".join(out))
+        pending[path] = "".join(out)
+    for asset in sorted(brew_assets):
+        check_exists(asset)
+    for path, text in pending.items():
+        open(path, "w").write(text)
     print(f"rewrote {len(PATHS)} formulas to {tag} with {len(shas)} asset checksums")
 
 
