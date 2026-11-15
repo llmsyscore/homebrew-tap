@@ -4,7 +4,8 @@ Formulae for [LLM Systems Manager](https://github.com/llmsyscore/llm-systems-man
 macOS (Apple Silicon) and Linux (x86_64; arm64 best-effort).
 
     brew tap llmsyscore/tap
-    brew trust llmsyscore/tap   # newer Homebrew requires trusting third-party taps
+    # newer Homebrew requires trusting third-party taps
+    brew trust llmsyscore/tap
 
 A cron in this tap tracks llm-systems-manager releases and bumps every formula
 automatically (after re-running the full install tests on macOS + Linux), so
