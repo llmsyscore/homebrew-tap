@@ -14,7 +14,19 @@ class LlmSystemsManager < Formula
 
   def install
     libexec.install Dir["*"]
-    prune_dev_payload
+    # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
+    %w[docker design devel demo docs/screenshots tools/packaging tools/kit website plans backups data
+       .github .claude docker-compose.yml .dockerignore .env.example
+       .gitignore .gitattributes .llmsys-release].each do |p|
+      rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
+    end
+    Dir[libexec/"tools/installer/ci-*.sh"].each { |f| rm(f) }
+    Dir[libexec/"**/{tests,test,__pycache__,.pytest_cache,node_modules}"].each do |d|
+      rm_r(d) if File.exist?(d)
+    end
+    Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
+      rm(f) if File.exist?(f)
+    end
     # The typed config loader ships as a tracked .example; materialise it.
     cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
     system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
@@ -36,22 +48,6 @@ class LlmSystemsManager < Formula
         exec "#{opt_libexec}/venv/bin/python3" "#{opt_libexec}/llm-systems-manager/backend/admin_password.py" "$@"
       SH
       (bin/"llm-systems-admin-password").chmod 0755
-    end
-  end
-
-  # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
-  def prune_dev_payload
-    %w[docker design devel demo docs/screenshots tools/packaging tools/kit website plans backups data
-       .github .claude docker-compose.yml .dockerignore .env.example
-       .gitignore .gitattributes .llmsys-release].each do |p|
-      rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
-    end
-    Dir[libexec/"tools/installer/ci-*.sh"].each { |f| rm(f) }
-    Dir[libexec/"**/{tests,test,__pycache__,.pytest_cache,node_modules}"].each do |d|
-      rm_r(d) if File.exist?(d)
-    end
-    Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
-      rm(f) if File.exist?(f)
     end
   end
 
