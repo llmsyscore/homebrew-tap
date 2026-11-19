@@ -1,8 +1,8 @@
 class LlmSystemsAlarmEngine < Formula
   desc "Alarm engine for LLM Systems Manager (rules, alerts, notifications)"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v3.4.0/llm-systems-manager-v3.4.0-brew.tar.gz"
-  sha256 "b074dcf51392ac263b756b7a4dc9620eed9f6dd2ada24bac77250dd700f3f050"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v3.5.0/llm-systems-manager-v3.5.0-brew.tar.gz"
+  sha256 "1bea6a8784e77aadc4ac617b5014fcd481f483f9386b63b4a123058a62111593"
   license "AGPL-3.0-only"
 
   livecheck do
@@ -14,20 +14,7 @@ class LlmSystemsAlarmEngine < Formula
 
   def install
     libexec.install Dir["*"]
-    prune_dev_payload
-    # The typed config loader ships as a tracked .example; materialise it.
-    cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
-    system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
-    system libexec/"venv/bin/pip", "install", "--upgrade", "pip"
-    system libexec/"venv/bin/pip", "install", "-r",
-           libexec/"llm-systems-alarm-engine/requirements.txt"
-    # watchfiles ships a prebuilt .so whose dylib id breaks Homebrew's macOS
-    # relocation; only uvicorn --reload uses it, which this launcher never does.
-    quiet_system libexec/"venv/bin/pip", "uninstall", "-y", "watchfiles"
-  end
-
-  # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
-  def prune_dev_payload
+    # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
     %w[docker design devel demo docs/screenshots tools/packaging tools/kit website plans backups data
        .github .claude docker-compose.yml .dockerignore .env.example
        .gitignore .gitattributes .llmsys-release].each do |p|
@@ -40,6 +27,15 @@ class LlmSystemsAlarmEngine < Formula
     Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
       rm(f) if File.exist?(f)
     end
+    # The typed config loader ships as a tracked .example; materialise it.
+    cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
+    system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
+    system libexec/"venv/bin/pip", "install", "--upgrade", "pip"
+    system libexec/"venv/bin/pip", "install", "-r",
+           libexec/"llm-systems-alarm-engine/requirements.txt"
+    # watchfiles ships a prebuilt .so whose dylib id breaks Homebrew's macOS
+    # relocation; only uvicorn --reload uses it, which this launcher never does.
+    quiet_system libexec/"venv/bin/pip", "uninstall", "-y", "watchfiles"
   end
 
   post_install_steps do

@@ -1,8 +1,8 @@
 class LlmSystemsManager < Formula
   desc "Real-time monitoring + control panel for a small LLM lab (manager)"
   homepage "https://github.com/llmsyscore/llm-systems-manager"
-  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v3.4.0/llm-systems-manager-v3.4.0-brew.tar.gz"
-  sha256 "b074dcf51392ac263b756b7a4dc9620eed9f6dd2ada24bac77250dd700f3f050"
+  url "https://github.com/llmsyscore/llm-systems-manager/releases/download/v3.5.0/llm-systems-manager-v3.5.0-brew.tar.gz"
+  sha256 "1bea6a8784e77aadc4ac617b5014fcd481f483f9386b63b4a123058a62111593"
   license "AGPL-3.0-only"
 
   livecheck do
@@ -14,7 +14,19 @@ class LlmSystemsManager < Formula
 
   def install
     libexec.install Dir["*"]
-    prune_dev_payload
+    # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
+    %w[docker design devel demo docs/screenshots tools/packaging tools/kit website plans backups data
+       .github .claude docker-compose.yml .dockerignore .env.example
+       .gitignore .gitattributes .llmsys-release].each do |p|
+      rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
+    end
+    Dir[libexec/"tools/installer/ci-*.sh"].each { |f| rm(f) }
+    Dir[libexec/"**/{tests,test,__pycache__,.pytest_cache,node_modules}"].each do |d|
+      rm_r(d) if File.exist?(d)
+    end
+    Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
+      rm(f) if File.exist?(f)
+    end
     # The typed config loader ships as a tracked .example; materialise it.
     cp libexec/"config/unified_config.py.example", libexec/"config/unified_config.py"
     system formula_opt_bin("python@3.12")/"python3.12", "-m", "venv", libexec/"venv"
@@ -36,22 +48,6 @@ class LlmSystemsManager < Formula
         exec "#{opt_libexec}/venv/bin/python3" "#{opt_libexec}/llm-systems-manager/backend/admin_password.py" "$@"
       SH
       (bin/"llm-systems-admin-password").chmod 0755
-    end
-  end
-
-  # No dev/CI payload in the keg — mirrors tools/packaging/build-packages.sh.
-  def prune_dev_payload
-    %w[docker design devel demo docs/screenshots tools/packaging tools/kit website plans backups data
-       .github .claude docker-compose.yml .dockerignore .env.example
-       .gitignore .gitattributes .llmsys-release].each do |p|
-      rm_r(libexec/p) if (libexec/p).exist? || (libexec/p).symlink?
-    end
-    Dir[libexec/"tools/installer/ci-*.sh"].each { |f| rm(f) }
-    Dir[libexec/"**/{tests,test,__pycache__,.pytest_cache,node_modules}"].each do |d|
-      rm_r(d) if File.exist?(d)
-    end
-    Dir[libexec/"**/{pytest.ini,requirements-dev.txt,.gitignore}"].each do |f|
-      rm(f) if File.exist?(f)
     end
   end
 
