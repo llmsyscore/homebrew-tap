@@ -39,7 +39,8 @@ class LlmSystemsAgent < Formula
     # every other key keeps its runtime-detected default until edited.
     config = etc/"llm-systems-agent/agent_config.yaml"
     unless config.exist?
-      seeded = seeded.sub(/^AGENT_OS:(\s+)\S+/, "AGENT_OS:\\1#{OS.mac? ? "macos" : "linux"}")
+      agent_os = OS.mac? ? "macos" : "linux"
+      seeded = seeded.sub(/^AGENT_OS:(\s+)\S+/, "AGENT_OS:\\1#{agent_os}")
       # Enrollment secret lives beside the config, not in the keg (survives upgrades).
       unless seeded.match?(/^ENROLLMENT_SECRET_FILE:/)
         seeded << "\nENROLLMENT_SECRET_FILE: \"#{etc}/llm-systems-agent/enrollment-secret\"\n"
